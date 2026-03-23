@@ -1,0 +1,17 @@
+[Unit]
+Description=mem0 Memory API Server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/path/to/mem0-server
+ExecStart=/usr/bin/python3 server.py
+Restart=on-failure
+RestartSec=5
+Environment=OPENAI_API_KEY=${OPENAI_API_KEY}
+Environment=MEM0_PORT=8765
+Environment=MEM0_LLM_MODEL=gpt-4.1-nano
+Environment=MEM0_EMBEDDING_MODEL=text-embedding-3-small
+
+[Install]
+WantedBy=default.target

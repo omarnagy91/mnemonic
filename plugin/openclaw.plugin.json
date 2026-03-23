@@ -1,0 +1,47 @@
+{
+  "id": "openclaw-mem0",
+  "name": "mem0 Memory",
+  "description": "Self-hosted LLM-powered memory with auto-recall, auto-capture, contradiction resolution via mem0",
+  "kind": "memory",
+  "version": "1.0.0",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "apiUrl": {
+        "type": "string",
+        "default": "http://127.0.0.1:8765",
+        "description": "mem0 API server URL"
+      },
+      "userId": {
+        "type": "string", 
+        "default": "omar",
+        "description": "Default user ID for memory operations"
+      },
+      "agentId": {
+        "type": "string",
+        "default": "zeno",
+        "description": "Agent ID for memory scoping"
+      },
+      "autoRecall": {
+        "type": "boolean",
+        "default": true,
+        "description": "Automatically inject relevant memories before each AI turn"
+      },
+      "autoCapture": {
+        "type": "boolean",
+        "default": true,
+        "description": "Automatically capture conversation context after each AI turn"
+      },
+      "maxRecallResults": {
+        "type": "number",
+        "default": 10,
+        "description": "Maximum memories to inject per turn"
+      },
+      "debug": {
+        "type": "boolean",
+        "default": false,
+        "description": "Enable verbose debug logging"
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "openclaw-mem0",
+  "version": "1.0.0",
+  "description": "OpenClaw mem0 memory plugin - self-hosted LLM-powered memory with auto-recall and auto-capture",
+  "main": "index.ts",
+  "dependencies": {}
+}
