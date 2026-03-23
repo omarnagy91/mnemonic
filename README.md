@@ -183,7 +183,7 @@ OpenClaw Gateway
 
 - **Qdrant + mem0:** Free (self-hosted)
 - **OpenAI Embeddings:** ~$0.02/million tokens
-- **LLM Extraction:** ~$0.02-0.05/day with gpt-4.1-nano
+- **LLM Extraction:** ~$0.02-0.05/day with gpt-4.1-mini
 - **Total:** ~$1-2/month for active use
 
 ## Configuration
@@ -206,7 +206,7 @@ OpenClaw Gateway
 |----------|---------|-------------|
 | `OPENAI_API_KEY` | — | Required. OpenAI API key |
 | `MEM0_PORT` | `8765` | API server port |
-| `MEM0_LLM_MODEL` | `gpt-4.1-nano` | LLM for fact extraction |
+| `MEM0_LLM_MODEL` | `gpt-4.1-mini` | LLM for fact extraction |
 | `MEM0_EMBEDDING_MODEL` | `text-embedding-3-small` | Embedding model |
 | `QDRANT_HOST` | `localhost` | Qdrant host |
 | `QDRANT_PORT` | `6333` | Qdrant port |

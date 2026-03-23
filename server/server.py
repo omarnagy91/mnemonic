@@ -18,7 +18,7 @@ logger = logging.getLogger("mem0-server")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 QDRANT_HOST = os.environ.get("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.environ.get("QDRANT_PORT", "6333"))
-LLM_MODEL = os.environ.get("MEM0_LLM_MODEL", "gpt-4.1-nano")
+LLM_MODEL = os.environ.get("MEM0_LLM_MODEL", "gpt-4.1-mini")
 EMBEDDING_MODEL = os.environ.get("MEM0_EMBEDDING_MODEL", "text-embedding-3-small")
 
 config = {
