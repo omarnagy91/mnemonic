@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mnemonic v4 - Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a; 
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: #2d2d2d;
+            border-bottom: 1px solid #404040;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        
+        .header h1 {
+            color: #00d4aa;
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header .subtitle {
+            color: #b0b0b0;
+            font-size: 1rem;
+        }
+        
+        .controls {
+            background: #2d2d2d;
+            border-bottom: 1px solid #404040;
+            padding: 1rem;
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        
+        .control-group label {
+            font-size: 0.9rem;
+            color: #b0b0b0;
+            font-weight: 600;
+        }
+        
+        input, select {
+            background: #404040;
+            border: 1px solid #606060;
+            color: #e0e0e0;
+            padding: 0.5rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            min-width: 120px;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #00d4aa;
+        }
+        
+        button {
+            background: #00d4aa;
+            color: #1a1a1a;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        
+        button:hover { 
+            background: #00b896; 
+            transform: translateY(-1px);
+        }
+        
+        .dashboard {
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%);
+            border: 1px solid #404040;
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 212, 170, 0.1);
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #00d4aa;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            color: #b0b0b0;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-sublabel {
+            color: #808080;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .chart-card {
+            background: linear-gradient(135deg, #2d2d2d 0%, #353535 100%);
+            border: 1px solid #404040;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .chart-title {
+            color: #00d4aa;
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        
+        .system-info {
+            background: #2d2d2d;
+            border: 1px solid #404040;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        .system-info h3 {
+            color: #00d4aa;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+        
+        .system-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        
+        .system-item {
+            background: #1a1a1a;
+            border: 1px solid #404040;
+            border-radius: 6px;
+            padding: 1rem;
+        }
+        
+        .system-item .label {
+            color: #b0b0b0;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .system-item .value {
+            color: #e0e0e0;
+            font-weight: 500;
+        }
+        
+        .system-status {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-healthy {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+        }
+        
+        .status-warning {
+            background: rgba(255, 152, 0, 0.2);
+            color: #FF9800;
+        }
+        
+        .status-error {
+            background: rgba(244, 67, 54, 0.2);
+            color: #F44336;
+        }
+        
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            font-size: 1.2rem;
+            color: #b0b0b0;
+        }
+        
+        .error {
+            background: linear-gradient(135deg, #4d2d2d 0%, #5d3d3d 100%);
+            border: 1px solid #804040;
+            color: #ff6b6b;
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            margin: 2rem 0;
+        }
+        
+        .refresh-time {
+            text-align: center;
+            color: #808080;
+            font-size: 0.8rem;
+            margin-top: 2rem;
+            padding: 1rem;
+        }
+        
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            .controls {
+                flex-direction: column;
+                align-items: center;
+                gap: 1rem;
+            }
+            .dashboard {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧠 Mnemonic v4 Dashboard</h1>
+        <div class="subtitle">Memory Analytics & System Health</div>
+    </div>
+    
+    <div class="controls">
+        <div class="control-group">
+            <label>User ID</label>
+            <input type="text" id="userId" value="omar" placeholder="User ID">
+        </div>
+        <div class="control-group">
+            <label>Time Range</label>
+            <select id="timeRange">
+                <option value="all">All Time</option>
+                <option value="30d">Last 30 Days</option>
+                <option value="7d">Last 7 Days</option>
+                <option value="24h">Last 24 Hours</option>
+            </select>
+        </div>
+        <button onclick="refreshDashboard()" id="refreshBtn">
+            🔄 Refresh Data
+        </button>
+        <button onclick="toggleAutoRefresh()" id="autoRefreshBtn">
+            ⏱️ Auto Refresh: Off
+        </button>
+    </div>
+    
+    <div class="dashboard">
+        <div class="stats-overview" id="statsOverview">
+            <div class="loading">Loading statistics...</div>
+        </div>
+        
+        <div class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-title">Memory Distribution by Category</div>
+                <div class="chart-container">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-card">
+                <div class="chart-title">Importance Distribution</div>
+                <div class="chart-container">
+                    <canvas id="importanceChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-card">
+                <div class="chart-title">Memory Growth Over Time</div>
+                <div class="chart-container">
+                    <canvas id="growthChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-card">
+                <div class="chart-title">Recent Activity (Last 30 Days)</div>
+                <div class="chart-container">
+                    <canvas id="activityChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="system-info">
+            <h3>System Health</h3>
+            <div class="system-grid" id="systemHealth">
+                <div class="loading">Loading system information...</div>
+            </div>
+        </div>
+        
+        <div class="refresh-time" id="refreshTime">
+            Last updated: <span id="lastUpdate">-</span>
+        </div>
+    </div>
+
+    <script>
+        let autoRefreshInterval = null;
+        let charts = {};
+        
+        // Category colors
+        const categoryColors = {
+            'personal': '#4CAF50',
+            'business': '#2196F3', 
+            'technical': '#FF9800',
+            'decision': '#9C27B0',
+            'relationship': '#E91E63',
+            'temporal': '#607D8B',
+            'uncategorized': '#795548'
+        };
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshDashboard();
+        });
+        
+        async function refreshDashboard() {
+            const refreshBtn = document.getElementById('refreshBtn');
+            const originalText = refreshBtn.innerHTML;
+            
+            try {
+                refreshBtn.innerHTML = '🔄 Refreshing...';
+                refreshBtn.disabled = true;
+                
+                await Promise.all([
+                    loadStats(),
+                    loadChartData(),
+                    loadSystemHealth()
+                ]);
+                
+                updateRefreshTime();
+                
+            } catch (error) {
+                console.error('Dashboard refresh failed:', error);
+                showError('Failed to refresh dashboard: ' + error.message);
+            } finally {
+                refreshBtn.innerHTML = originalText;
+                refreshBtn.disabled = false;
+            }
+        }
+        
+        async function loadStats() {
+            try {
+                const response = await fetch('/stats');
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to load stats');
+                }
+                
+                renderStatsOverview(data);
+                
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+                document.getElementById('statsOverview').innerHTML = 
+                    `<div class="error">Failed to load statistics: ${error.message}</div>`;
+            }
+        }
+        
+        function renderStatsOverview(data) {
+            const container = document.getElementById('statsOverview');
+            
+            const stats = [
+                {
+                    number: data.total_memories || 0,
+                    label: 'Total Memories',
+                    sublabel: 'across all categories'
+                },
+                {
+                    number: Object.keys(data.categories || {}).length,
+                    label: 'Categories',
+                    sublabel: 'active categories'
+                },
+                {
+                    number: data.recent_24h || 0,
+                    label: 'Added Today',
+                    sublabel: 'new memories'
+                },
+                {
+                    number: data.recent_7d || 0,
+                    label: 'This Week',
+                    sublabel: 'new memories'
+                },
+                {
+                    number: data.recent_30d || 0,
+                    label: 'This Month',
+                    sublabel: 'new memories'
+                },
+                {
+                    number: (data.average_importance || 0).toFixed(1),
+                    label: 'Avg Importance',
+                    sublabel: 'out of 10'
+                }
+            ];
+            
+            container.innerHTML = stats.map(stat => `
+                <div class="stat-card">
+                    <div class="stat-number">${stat.number}</div>
+                    <div class="stat-label">${stat.label}</div>
+                    <div class="stat-sublabel">${stat.sublabel}</div>
+                </div>
+            `).join('');
+        }
+        
+        async function loadChartData() {
+            try {
+                const response = await fetch('/stats');
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to load chart data');
+                }
+                
+                // Category distribution chart
+                renderCategoryChart(data.categories || {});
+                
+                // Importance distribution chart
+                renderImportanceChart(data.importance_distribution || {});
+                
+                // Growth chart (simplified - would need historical data in production)
+                renderGrowthChart(data);
+                
+                // Activity chart (simplified)
+                renderActivityChart(data);
+                
+            } catch (error) {
+                console.error('Failed to load chart data:', error);
+            }
+        }
+        
+        function renderCategoryChart(categories) {
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            
+            if (charts.categoryChart) {
+                charts.categoryChart.destroy();
+            }
+            
+            const labels = Object.keys(categories);
+            const data = Object.values(categories);
+            const colors = labels.map(cat => categoryColors[cat] || '#CCCCCC');
+            
+            charts.categoryChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels.map(l => l.charAt(0).toUpperCase() + l.slice(1)),
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderColor: '#2d2d2d',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#e0e0e0',
+                                padding: 20,
+                                usePointStyle: true
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderImportanceChart(importanceData) {
+            const ctx = document.getElementById('importanceChart').getContext('2d');
+            
+            if (charts.importanceChart) {
+                charts.importanceChart.destroy();
+            }
+            
+            const labels = Array.from({length: 10}, (_, i) => (i + 1).toString());
+            const data = labels.map(label => importanceData[label] || 0);
+            
+            charts.importanceChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Number of Memories',
+                        data: data,
+                        backgroundColor: 'rgba(0, 212, 170, 0.6)',
+                        borderColor: '#00d4aa',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Importance Level',
+                                color: '#e0e0e0'
+                            },
+                            ticks: {
+                                color: '#b0b0b0'
+                            },
+                            grid: {
+                                color: '#404040'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Memory Count',
+                                color: '#e0e0e0'
+                            },
+                            ticks: {
+                                color: '#b0b0b0',
+                                beginAtZero: true
+                            },
+                            grid: {
+                                color: '#404040'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderGrowthChart(data) {
+            const ctx = document.getElementById('growthChart').getContext('2d');
+            
+            if (charts.growthChart) {
+                charts.growthChart.destroy();
+            }
+            
+            // Simplified growth data (in production, this would come from the API)
+            const labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+            const growthData = [
+                Math.max(0, (data.total_memories || 0) - (data.recent_30d || 0)),
+                Math.max(0, (data.total_memories || 0) - (data.recent_21d || 0)),
+                Math.max(0, (data.total_memories || 0) - (data.recent_14d || 0)),
+                data.total_memories || 0
+            ];
+            
+            charts.growthChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total Memories',
+                        data: growthData,
+                        borderColor: '#00d4aa',
+                        backgroundColor: 'rgba(0, 212, 170, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#b0b0b0'
+                            },
+                            grid: {
+                                color: '#404040'
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                color: '#b0b0b0',
+                                beginAtZero: true
+                            },
+                            grid: {
+                                color: '#404040'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderActivityChart(data) {
+            const ctx = document.getElementById('activityChart').getContext('2d');
+            
+            if (charts.activityChart) {
+                charts.activityChart.destroy();
+            }
+            
+            // Simplified activity data
+            const labels = ['24h ago', '7d ago', '30d ago'];
+            const activityData = [
+                data.recent_24h || 0,
+                data.recent_7d || 0,
+                data.recent_30d || 0
+            ];
+            
+            charts.activityChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Memories Added',
+                        data: activityData,
+                        borderColor: '#00d4aa',
+                        backgroundColor: 'rgba(0, 212, 170, 0.2)',
+                        pointBackgroundColor: '#00d4aa',
+                        pointBorderColor: '#00d4aa'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#b0b0b0'
+                            },
+                            grid: {
+                                color: '#404040'
+                            },
+                            angleLines: {
+                                color: '#404040'
+                            },
+                            pointLabels: {
+                                color: '#e0e0e0'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        async function loadSystemHealth() {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to load system health');
+                }
+                
+                renderSystemHealth(data);
+                
+            } catch (error) {
+                console.error('Failed to load system health:', error);
+                document.getElementById('systemHealth').innerHTML = 
+                    `<div class="error">Failed to load system health: ${error.message}</div>`;
+            }
+        }
+        
+        function renderSystemHealth(data) {
+            const container = document.getElementById('systemHealth');
+            
+            const components = data.components || {};
+            const config = data.config || {};
+            
+            const getStatus = (status) => {
+                if (typeof status === 'string') {
+                    if (status.startsWith('✓')) return { class: 'status-healthy', text: 'Healthy' };
+                    if (status.startsWith('✗')) return { class: 'status-error', text: 'Error' };
+                }
+                return { class: 'status-warning', text: 'Unknown' };
+            };
+            
+            container.innerHTML = `
+                <div class="system-item">
+                    <div class="label">Service Status</div>
+                    <div class="value">
+                        <span class="system-status status-healthy">Running</span>
+                        <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #b0b0b0;">
+                            Version: ${data.version || 'Unknown'}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="system-item">
+                    <div class="label">Vector Store</div>
+                    <div class="value">
+                        <span class="system-status ${getStatus(components.qdrant).class}">
+                            ${getStatus(components.qdrant).text}
+                        </span>
+                        <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #b0b0b0;">
+                            Collection: ${config.collection || 'Unknown'}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="system-item">
+                    <div class="label">LLM Provider</div>
+                    <div class="value">
+                        <span class="system-status ${getStatus(components.openai).class}">
+                            ${getStatus(components.openai).text}
+                        </span>
+                        <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #b0b0b0;">
+                            Model: ${config.llm_model || 'Unknown'}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="system-item">
+                    <div class="label">Memory Engine</div>
+                    <div class="value">
+                        <span class="system-status ${getStatus(components.mem0).class}">
+                            ${getStatus(components.mem0).text}
+                        </span>
+                        <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #b0b0b0;">
+                            Features: Context Tree, Compaction
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="system-item">
+                    <div class="label">Extraction Engine</div>
+                    <div class="value">
+                        <span class="system-status ${getStatus(components.extractor).class}">
+                            ${getStatus(components.extractor).text}
+                        </span>
+                        <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #b0b0b0;">
+                            Smart categorization & scoring
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="system-item">
+                    <div class="label">Graph Store</div>
+                    <div class="value">
+                        <span class="system-status status-warning">Disabled</span>
+                        <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #b0b0b0;">
+                            Kuzu removed for stability
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function toggleAutoRefresh() {
+            const btn = document.getElementById('autoRefreshBtn');
+            
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+                btn.innerHTML = '⏱️ Auto Refresh: Off';
+            } else {
+                autoRefreshInterval = setInterval(refreshDashboard, 30000); // 30 seconds
+                btn.innerHTML = '⏱️ Auto Refresh: On';
+            }
+        }
+        
+        function updateRefreshTime() {
+            const now = new Date();
+            document.getElementById('lastUpdate').textContent = 
+                now.toLocaleTimeString() + ', ' + now.toLocaleDateString();
+        }
+        
+        function showError(message) {
+            const dashboard = document.querySelector('.dashboard');
+            dashboard.innerHTML = `<div class="error">${message}</div>` + dashboard.innerHTML;
+        }
+    </script>
+</body>
+</html>

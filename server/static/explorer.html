@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mnemonic v4 - Memory Explorer</title>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a; 
+            color: #e0e0e0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: #2d2d2d;
+            border-bottom: 1px solid #404040;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            color: #00d4aa;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .tab {
+            background: #404040;
+            border: none;
+            color: #e0e0e0;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .tab:hover { background: #505050; }
+        .tab.active { background: #00d4aa; color: #1a1a1a; }
+        
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        
+        .control-group label {
+            font-size: 0.8rem;
+            color: #b0b0b0;
+        }
+        
+        input, select {
+            background: #404040;
+            border: 1px solid #606060;
+            color: #e0e0e0;
+            padding: 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #00d4aa;
+        }
+        
+        button {
+            background: #00d4aa;
+            color: #1a1a1a;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        button:hover { background: #00b896; }
+        
+        .content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+        
+        .sidebar {
+            width: 300px;
+            background: #2d2d2d;
+            border-right: 1px solid #404040;
+            padding: 1rem;
+            overflow-y: auto;
+        }
+        
+        .main-view {
+            flex: 1;
+            position: relative;
+        }
+        
+        .tab-content {
+            width: 100%;
+            height: 100%;
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        #graph-container, #timeline-container {
+            width: 100%;
+            height: 100%;
+            background: #1a1a1a;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .stat-card {
+            background: #2d2d2d;
+            border: 1px solid #404040;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #00d4aa;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            color: #b0b0b0;
+            font-size: 0.9rem;
+        }
+        
+        .timeline-item {
+            background: #2d2d2d;
+            border: 1px solid #404040;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .timeline-date {
+            color: #00d4aa;
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .timeline-category {
+            display: inline-block;
+            background: #404040;
+            color: #e0e0e0;
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .timeline-memory {
+            line-height: 1.4;
+        }
+        
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            font-size: 1.2rem;
+            color: #b0b0b0;
+        }
+        
+        .error {
+            background: #4d2d2d;
+            border: 1px solid #804040;
+            color: #ff6b6b;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem;
+        }
+        
+        .legend {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(45, 45, 45, 0.9);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid #404040;
+            z-index: 1000;
+        }
+        
+        .legend h4 {
+            color: #00d4aa;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.25rem;
+            font-size: 0.8rem;
+        }
+        
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar { 
+                width: 250px; 
+            }
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧠 Mnemonic v4</h1>
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('graph')">Graph</button>
+            <button class="tab" onclick="switchTab('timeline')">Timeline</button>
+            <button class="tab" onclick="switchTab('categories')">Categories</button>
+        </div>
+        <div class="controls">
+            <div class="control-group">
+                <label>User ID</label>
+                <input type="text" id="userId" value="omar" placeholder="User ID">
+            </div>
+            <div class="control-group">
+                <label>Category</label>
+                <select id="categoryFilter">
+                    <option value="">All Categories</option>
+                    <option value="personal">Personal</option>
+                    <option value="business">Business</option>
+                    <option value="technical">Technical</option>
+                    <option value="decision">Decision</option>
+                    <option value="relationship">Relationship</option>
+                    <option value="temporal">Temporal</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Max Nodes</label>
+                <input type="number" id="maxNodes" value="50" min="10" max="200">
+            </div>
+            <button onclick="loadData()">Refresh</button>
+        </div>
+    </div>
+    
+    <div class="content">
+        <div class="sidebar">
+            <div id="sidebar-content">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="total-memories">-</div>
+                        <div class="stat-label">Total Memories</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="categories-count">-</div>
+                        <div class="stat-label">Categories</div>
+                    </div>
+                </div>
+                
+                <h4 style="color: #00d4aa; margin-bottom: 0.5rem;">Recent Activity</h4>
+                <div id="recent-memories"></div>
+            </div>
+        </div>
+        
+        <div class="main-view">
+            <!-- Graph Tab -->
+            <div id="graph-tab" class="tab-content active">
+                <div id="graph-container"></div>
+                <div class="legend">
+                    <h4>Categories</h4>
+                    <div id="graph-legend"></div>
+                </div>
+            </div>
+            
+            <!-- Timeline Tab -->
+            <div id="timeline-tab" class="tab-content">
+                <div id="timeline-container" style="padding: 1rem; overflow-y: auto;">
+                    <div class="controls" style="margin-bottom: 1rem; background: #2d2d2d; padding: 1rem; border-radius: 8px;">
+                        <div class="control-group">
+                            <label>Min Importance</label>
+                            <input type="number" id="minImportance" min="1" max="10" placeholder="1-10">
+                        </div>
+                        <div class="control-group">
+                            <label>From Date</label>
+                            <input type="date" id="fromDate">
+                        </div>
+                        <div class="control-group">
+                            <label>To Date</label>
+                            <input type="date" id="toDate">
+                        </div>
+                        <div class="control-group">
+                            <label>Limit</label>
+                            <input type="number" id="timelineLimit" value="50" min="10" max="200">
+                        </div>
+                        <button onclick="loadTimeline()">Load Timeline</button>
+                    </div>
+                    <div id="timeline-items"></div>
+                </div>
+            </div>
+            
+            <!-- Categories Tab -->
+            <div id="categories-tab" class="tab-content">
+                <div id="categories-container" style="padding: 1rem; overflow-y: auto;">
+                    <div id="categories-content"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let network = null;
+        let currentData = { nodes: [], edges: [], categories: [] };
+        
+        // Category colors
+        const categoryColors = {
+            'personal': '#4CAF50',
+            'business': '#2196F3', 
+            'technical': '#FF9800',
+            'decision': '#9C27B0',
+            'relationship': '#E91E63',
+            'temporal': '#607D8B',
+            'uncategorized': '#795548'
+        };
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData();
+        });
+        
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // Load data if needed
+            if (tabName === 'timeline') {
+                loadTimeline();
+            } else if (tabName === 'categories') {
+                loadCategories();
+            } else if (tabName === 'graph') {
+                loadGraph();
+            }
+        }
+        
+        async function loadData() {
+            try {
+                document.getElementById('sidebar-content').innerHTML = '<div class="loading">Loading...</div>';
+                await Promise.all([loadGraph(), loadStats(), loadRecentMemories()]);
+            } catch (error) {
+                console.error('Failed to load data:', error);
+                showError('Failed to load data: ' + error.message);
+            }
+        }
+        
+        async function loadGraph() {
+            const userId = document.getElementById('userId').value || 'omar';
+            const category = document.getElementById('categoryFilter').value;
+            const maxNodes = parseInt(document.getElementById('maxNodes').value) || 50;
+            
+            try {
+                const params = new URLSearchParams({
+                    user_id: userId,
+                    max_nodes: maxNodes
+                });
+                if (category) params.append('category', category);
+                
+                const response = await fetch(`/graph?${params}`);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to load graph');
+                }
+                
+                currentData = data;
+                renderGraph(data);
+                updateLegend(data.categories);
+                
+            } catch (error) {
+                console.error('Failed to load graph:', error);
+                document.getElementById('graph-container').innerHTML = 
+                    `<div class="error">Failed to load graph: ${error.message}</div>`;
+            }
+        }
+        
+        function renderGraph(data) {
+            const container = document.getElementById('graph-container');
+            
+            if (!data.nodes || data.nodes.length === 0) {
+                container.innerHTML = '<div class="loading">No memories found</div>';
+                return;
+            }
+            
+            // Prepare nodes
+            const nodes = data.nodes.map(node => ({
+                id: node.id,
+                label: node.memory.substring(0, 50) + (node.memory.length > 50 ? '...' : ''),
+                title: `<strong>${node.category}</strong><br/>${node.memory}<br/><small>Importance: ${node.importance}/10</small>`,
+                color: categoryColors[node.category] || '#CCCCCC',
+                value: node.importance * 2, // Size based on importance
+                font: { color: '#e0e0e0' }
+            }));
+            
+            // Prepare edges
+            const edges = data.edges.map(edge => ({
+                from: edge.from_id || edge.from,
+                to: edge.to_id || edge.to,
+                width: Math.max(1, edge.similarity * 5),
+                color: { color: '#666666', opacity: 0.6 }
+            }));
+            
+            const networkData = { nodes: nodes, edges: edges };
+            
+            const options = {
+                nodes: {
+                    shape: 'dot',
+                    size: 16,
+                    font: {
+                        size: 12,
+                        color: '#e0e0e0'
+                    },
+                    borderWidth: 2,
+                    shadow: true
+                },
+                edges: {
+                    width: 1,
+                    color: { inherit: 'both' },
+                    smooth: {
+                        type: 'continuous'
+                    }
+                },
+                physics: {
+                    enabled: true,
+                    stabilization: { iterations: 150 },
+                    barnesHut: {
+                        gravitationalConstant: -2000,
+                        centralGravity: 0.3,
+                        springLength: 95,
+                        springConstant: 0.04,
+                        damping: 0.09
+                    }
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 300
+                },
+                configure: {
+                    enabled: false
+                }
+            };
+            
+            network = new vis.Network(container, networkData, options);
+            
+            network.on('click', function(params) {
+                if (params.nodes.length > 0) {
+                    const nodeId = params.nodes[0];
+                    const node = data.nodes.find(n => n.id === nodeId);
+                    if (node) {
+                        showMemoryDetails(node);
+                    }
+                }
+            });
+        }
+        
+        function updateLegend(categories) {
+            const legend = document.getElementById('graph-legend');
+            legend.innerHTML = categories.map(cat => `
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: ${categoryColors[cat] || '#CCCCCC'}"></div>
+                    <span>${cat}</span>
+                </div>
+            `).join('');
+        }
+        
+        function showMemoryDetails(memory) {
+            alert(`Memory Details:\n\nCategory: ${memory.category}\nImportance: ${memory.importance}/10\n\n${memory.memory}`);
+        }
+        
+        async function loadTimeline() {
+            const userId = document.getElementById('userId').value || 'omar';
+            const category = document.getElementById('categoryFilter').value;
+            const minImportance = document.getElementById('minImportance').value;
+            const fromDate = document.getElementById('fromDate').value;
+            const toDate = document.getElementById('toDate').value;
+            const limit = parseInt(document.getElementById('timelineLimit').value) || 50;
+            
+            try {
+                const params = new URLSearchParams({ user_id: userId, limit });
+                if (category) params.append('category', category);
+                if (minImportance) params.append('min_importance', minImportance);
+                if (fromDate) params.append('from', fromDate);
+                if (toDate) params.append('to', toDate);
+                
+                const response = await fetch(`/timeline?${params}`);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to load timeline');
+                }
+                
+                renderTimeline(data);
+                
+            } catch (error) {
+                console.error('Failed to load timeline:', error);
+                document.getElementById('timeline-items').innerHTML = 
+                    `<div class="error">Failed to load timeline: ${error.message}</div>`;
+            }
+        }
+        
+        function renderTimeline(data) {
+            const container = document.getElementById('timeline-items');
+            
+            if (!data.entries || data.entries.length === 0) {
+                container.innerHTML = '<div class="loading">No timeline entries found</div>';
+                return;
+            }
+            
+            container.innerHTML = data.entries.map(entry => {
+                const date = new Date(entry.created_at).toLocaleString();
+                const importance = '★'.repeat(Math.min(5, Math.ceil(entry.importance / 2)));
+                
+                return `
+                    <div class="timeline-item">
+                        <div class="timeline-date">${date}</div>
+                        <div class="timeline-category" style="background-color: ${categoryColors[entry.category] || '#795548'}">${entry.category}</div>
+                        <div style="display: inline-block; margin-left: 0.5rem; color: #FFD700;">${importance}</div>
+                        <div class="timeline-memory">${entry.memory}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        async function loadCategories() {
+            const userId = document.getElementById('userId').value || 'omar';
+            
+            try {
+                const response = await fetch(`/categories?user_id=${userId}`);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to load categories');
+                }
+                
+                renderCategories(data);
+                
+            } catch (error) {
+                console.error('Failed to load categories:', error);
+                document.getElementById('categories-content').innerHTML = 
+                    `<div class="error">Failed to load categories: ${error.message}</div>`;
+            }
+        }
+        
+        function renderCategories(data) {
+            const container = document.getElementById('categories-content');
+            
+            if (!data.categories || data.categories.length === 0) {
+                container.innerHTML = '<div class="loading">No categories found</div>';
+                return;
+            }
+            
+            container.innerHTML = data.categories.map(cat => `
+                <div class="timeline-item" style="border-left: 4px solid ${categoryColors[cat.category] || '#795548'}">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="color: ${categoryColors[cat.category] || '#795548'}; text-transform: capitalize;">${cat.category}</h3>
+                        <div style="display: flex; gap: 1rem; font-size: 0.8rem; color: #b0b0b0;">
+                            <span>${cat.memory_count} memories</span>
+                            <span>Avg importance: ${cat.importance_avg?.toFixed(1) || 'N/A'}</span>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 0.5rem;">
+                        <strong style="color: #00d4aa;">Summary:</strong>
+                        <p style="margin-top: 0.25rem;">${cat.l0_summary}</p>
+                    </div>
+                    ${cat.l1_summary ? `
+                        <div>
+                            <strong style="color: #00d4aa;">Details:</strong>
+                            <p style="margin-top: 0.25rem;">${cat.l1_summary}</p>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+        
+        async function loadStats() {
+            try {
+                const response = await fetch('/stats');
+                const data = await response.json();
+                
+                document.getElementById('total-memories').textContent = data.total_memories || 0;
+                document.getElementById('categories-count').textContent = Object.keys(data.categories || {}).length;
+                
+                // Update sidebar with stats
+                const sidebarContent = document.getElementById('sidebar-content');
+                const statsHtml = `
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">${data.total_memories || 0}</div>
+                            <div class="stat-label">Total Memories</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${Object.keys(data.categories || {}).length}</div>
+                            <div class="stat-label">Categories</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${data.recent_24h || 0}</div>
+                            <div class="stat-label">Added Today</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${data.average_importance || 0}</div>
+                            <div class="stat-label">Avg Importance</div>
+                        </div>
+                    </div>
+                `;
+                sidebarContent.innerHTML = statsHtml + sidebarContent.innerHTML.replace(/<div class="stats-grid">.*?<\/div>/s, '');
+                
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        }
+        
+        async function loadRecentMemories() {
+            try {
+                const userId = document.getElementById('userId').value || 'omar';
+                const response = await fetch(`/timeline?user_id=${userId}&limit=5`);
+                const data = await response.json();
+                
+                if (data.entries && data.entries.length > 0) {
+                    const recentHtml = `
+                        <h4 style="color: #00d4aa; margin-bottom: 0.5rem; margin-top: 1rem;">Recent Activity</h4>
+                        ${data.entries.map(entry => `
+                            <div style="background: #1a1a1a; border: 1px solid #404040; border-radius: 4px; padding: 0.5rem; margin-bottom: 0.5rem; font-size: 0.8rem;">
+                                <div style="color: ${categoryColors[entry.category] || '#795548'}; margin-bottom: 0.25rem;">
+                                    ${entry.category} • ${new Date(entry.created_at).toLocaleDateString()}
+                                </div>
+                                <div style="line-height: 1.3;">${entry.memory.substring(0, 100)}${entry.memory.length > 100 ? '...' : ''}</div>
+                            </div>
+                        `).join('')}
+                    `;
+                    
+                    const sidebarContent = document.getElementById('sidebar-content');
+                    sidebarContent.innerHTML = sidebarContent.innerHTML.replace(/<h4.*?>Recent Activity<\/h4>.*$/s, '') + recentHtml;
+                }
+                
+            } catch (error) {
+                console.error('Failed to load recent memories:', error);
+            }
+        }
+        
+        function showError(message) {
+            document.getElementById('graph-container').innerHTML = `<div class="error">${message}</div>`;
+        }
+    </script>
+</body>
+</html>
