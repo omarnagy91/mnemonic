@@ -1,0 +1,7 @@
+# Runtime dependencies for the Mnemonic API server (server/server.py).
+# Qdrant itself runs as a Docker container; see README quickstart.
+mem0ai>=2.0,<3
+fastapi>=0.110
+uvicorn>=0.29
+openai>=1.30
+qdrant-client>=1.9

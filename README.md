@@ -1,179 +1,115 @@
 <div align="center">
 
-# 🧠 Mnemonic
+# Mnemonic
 
-**Self-hosted AI memory for OpenClaw agents.**
+### Self-hosted, categorized memory for AI agents. Your conversation history stays on your box.
 
-Give your AI persistent, intelligent memory — no cloud subscription required.
-
-[Quick Start](#quick-start) · [How It Works](#how-it-works) · [Architecture](#architecture) · [v4 Features](#v4-features)
-
----
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![OpenClaw](https://img.shields.io/badge/OpenClaw-Plugin-purple.svg)](https://github.com/openclaw/openclaw)
-[![mem0](https://img.shields.io/badge/Powered%20by-mem0-green.svg)](https://github.com/mem0ai/mem0)
+[![CI](https://github.com/omarnagy91/mnemonic/actions/workflows/ci.yml/badge.svg)](https://github.com/omarnagy91/mnemonic/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-9D7BEA.svg)](LICENSE)
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-1A1A1A.svg)
+[![Built on mem0](https://img.shields.io/badge/built%20on-mem0%20%2B%20Qdrant-1A1A1A.svg)](https://github.com/mem0ai/mem0)
 
 </div>
 
-## What is Mnemonic?
+---
 
-Your AI forgets everything between conversations. Mnemonic fixes that — **locally, for free.**
+## What this is
 
-It's a self-hosted memory layer for [OpenClaw](https://github.com/openclaw/openclaw) agents that:
+A small FastAPI server that gives an AI agent long-term memory you host yourself. It wraps [mem0](https://github.com/mem0ai/mem0) (which does the vector storage and the add/update/delete reasoning over facts) and adds the parts a single library leaves to you: automatic categorization, a tiered "context tree" so you load a useful slice of memory instead of dumping everything into the prompt, a compaction hook for long sessions, and a visual explorer for seeing what the agent actually remembers.
 
-- 🌳 **Context Tree** — hierarchical memory organized by category with L0/L1/L2 tiered loading
-- 🔄 **Auto-captures** facts, preferences, and decisions from every conversation
-- 🔍 **Auto-recalls** relevant memories before each AI turn
-- ⚡ **Contradiction resolution** — "moved to SF" supersedes "lives in NYC"
-- 📦 **Compaction hook** — saves context before token limits hit
-- 📊 **Visual explorer** — graph visualization, timeline, dashboard
-- 🏠 **Runs 100% locally** — your data never leaves your server
+It runs on your own machine against your own [Qdrant](https://github.com/qdrant/qdrant). The conversation history and the vectors never leave your box, and the only paid dependency is whatever LLM you point the categorizer and the synthesis step at.
 
-Think of it as [Supermemory](https://supermemory.ai) or [mem0 Cloud](https://mem0.ai), but self-hosted and free.
+### A note on where this came from
 
-## v4 Features
+Mnemonic was built as the memory layer for an in-house multi-agent stack (it still ships an OpenClaw plugin under `plugin/`). It is being generalized into something any agent runtime can use. That history shows in a few places: single-user defaults, a couple of modules that are implemented but not yet wired into the main add path (see the [roadmap](#roadmap)). The core server, categorization, retrieval, and the explorer work today; the rough edges are named honestly below rather than hidden.
 
-### Context Tree Architecture
-Memories organized into categories (personal, business, technical, decisions, relationships, temporal) with hierarchical summaries:
+## What it does
 
-- **L0**: Category summaries (~50 tokens each, always loaded)
-- **L1**: Detailed summaries (~200 tokens, loaded when relevant)
-- **L2**: Individual memories (loaded for specific queries)
+- **Categorized storage.** Every memory is auto-sorted into one of seven categories (personal, business, technical, decision, relationship, temporal, uncategorized) with an importance score, so retrieval and summaries can reason about *kinds* of memory, not just a flat vector pile.
+- **Context tree (L0/L1/L2).** Instead of returning raw hits, `/context` assembles a tiered view: L0 category summaries, then progressively more detail. You give the agent a compact map of what it knows and drill in only where the query needs it.
+- **Vector search.** `/search` is mem0 + Qdrant similarity search with weighted scoring (recency and importance), plus a `/reflect` endpoint that synthesizes an answer across the retrieved memories.
+- **Fact resolution.** mem0 decides add vs update vs delete when a new fact arrives, so "moved to a new city" updates the old fact rather than stacking a contradiction. An explicit `ContradictionDetector` (an LLM judges keep-old / keep-new / merge) ships in `contradiction.py` for stricter control; wiring it into the `/add` path is a tracked issue, not a done feature.
+- **Compaction hook.** `/compact` saves a session's working context before it hits a token limit, so a long conversation does not lose its early turns.
+- **Import pipeline.** `/import` ingests history from text, JSON, CSV, and exported social data into the memory store as an async job.
+- **Visual explorer.** `/explorer` and `/dashboard` render the graph, the timeline, and per-category views in the browser, so you can debug what the agent remembers instead of guessing.
 
-```bash
-# Get assembled context for a query
-curl -X POST http://localhost:8765/context \
-  -H 'Content-Type: application/json' \
-  -d '{"query":"what projects am I working on?","user_id":"default"}'
-```
+## Quickstart
 
-### Compaction Hook
-Save valuable context before token limits hit:
+You need Python 3.11+, Docker (for Qdrant), and an OpenAI API key for the categorizer and synthesis steps.
 
 ```bash
-curl -X POST http://localhost:8765/compact \
-  -H 'Content-Type: application/json' \
-  -d '{"messages":[...],"user_id":"default","session_id":"abc"}'
+git clone https://github.com/omarnagy91/mnemonic && cd mnemonic
+
+# 1. Qdrant (vector store) in Docker
+docker run -d -p 6333:6333 -v "$(pwd)/.data/qdrant:/qdrant/storage" qdrant/qdrant
+
+# 2. server deps + key
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+export OPENAI_API_KEY=sk-...
+
+# 3. run it
+uvicorn server.server:app --host 0.0.0.0 --port 8080
 ```
 
-### Memory Graph Visualization
-Interactive graph with real cosine similarity edges:
-
-- **Explorer UI**: `http://localhost:8765/explorer` — vis-network graph + timeline
-- **Dashboard**: `http://localhost:8765/dashboard` — Chart.js analytics
-- **Graph API**: `GET /graph?user_id=default` — similarity-based edges computed via Qdrant
-
-### Timeline & Categories
-```bash
-# Chronological timeline with filters
-curl 'http://localhost:8765/timeline?user_id=default&category=business&min_importance=7'
-
-# Category summaries
-curl 'http://localhost:8765/categories?user_id=default'
-```
-
-## Quick Start
-
-### Prerequisites
-
-- Docker (for Qdrant vector database)
-- Python 3.10+ (for mem0 API server)
-- An OpenAI API key (for embeddings + fact extraction)
-
-### 1. Start Qdrant
+Store and recall:
 
 ```bash
-docker run -d --name qdrant \
-  --restart unless-stopped \
-  -p 6333:6333 \
-  -v ~/.data/qdrant:/qdrant/storage \
-  qdrant/qdrant
+curl -X POST localhost:8080/add -H 'content-type: application/json' \
+  -d '{"messages":[{"role":"user","content":"I prefer Postgres over Mongo for new projects."}],"user_id":"me"}'
+
+curl -X POST localhost:8080/search -H 'content-type: application/json' \
+  -d '{"query":"what database do I like?","user_id":"me"}'
 ```
 
-### 2. Install & Start the API Server
+Then open `http://localhost:8080/explorer` to see the graph and timeline. The full route list is in [server/server.py](server/server.py) (`/add`, `/search`, `/context`, `/reflect`, `/compact`, `/timeline`, `/graph`, `/categories`, `/import`, plus health and stats).
+
+## How it works
+
+```
+   conversation ──▶ /add ──▶ categorize + score ──▶ mem0 (add/update/delete) ──▶ Qdrant
+                                                                                    │
+   query ──▶ /context ──▶ retrieval (vector + weighted) ──▶ L0/L1/L2 context tree ◀─┘
+                              │
+                              └─▶ /reflect ──▶ synthesized answer across memories
+```
+
+mem0 owns the vector storage and the per-fact add/update/delete decision. Mnemonic owns the categorization, the importance weighting, the tiered context assembly, the compaction and import endpoints, and the explorer UI.
+
+## Honest comparison
+
+| Option | What it is | When to use it instead |
+| --- | --- | --- |
+| [mem0](https://github.com/mem0ai/mem0) (self-host) | The library Mnemonic is built on | You want just the memory primitive and will build your own categorization, context assembly, and UI. Mnemonic is those layers, pre-built. |
+| [Mem0 Platform](https://mem0.ai) / [Supermemory](https://supermemory.ai) | Hosted memory APIs | You would rather pay a monthly fee than run Qdrant and a server, and you are comfortable with conversation history living in their cloud. |
+| [Zep](https://github.com/getzep/zep) | Mature self-hosted memory server with its own store | You want a larger, more battle-tested project with a bigger community. Zep is further along; Mnemonic is smaller and easier to read end to end. |
+
+Mnemonic's niche: small, self-hosted, category-aware, and readable in one sitting, with the conversation data staying on your machine.
+
+## Roadmap
+
+The honest near-term list. Help is welcome on any of these (see [issues](https://github.com/omarnagy91/mnemonic/issues)).
+
+- Wire the explicit `ContradictionDetector` into the `/add` path behind a config flag, with tests.
+- Finish wiring the import pipeline endpoints to the job runner and document the supported formats.
+- Remove the single-user (`user_id="me"`) and in-house defaults so a fresh deploy is multi-user out of the box.
+- Route-level tests with a mocked mem0 instance (today the pure-function modules are unit-tested, the routes are not).
+- A `docker-compose.yml` that brings up Qdrant and the server together.
+- Optional MCP server wrapper so MCP-speaking agents can use it without the HTTP client.
+
+## Contributing
+
+The pure-function modules (`categorizer`, `extractor`, `importer`, `models`) have unit tests that run offline in under a second:
 
 ```bash
-pip install mem0ai fastapi uvicorn openai qdrant-client
-
-export OPENAI_API_KEY="sk-..."
-cd server && python server.py
-# → Running on http://127.0.0.1:8765
+pip install -r requirements.txt && pip install pytest
+pytest -q
 ```
 
-### 3. Install the OpenClaw Plugin
+Start with [CONTRIBUTING.md](CONTRIBUTING.md) and the [good first issues](https://github.com/omarnagy91/mnemonic/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22). Security reports go to the address in [SECURITY.md](SECURITY.md).
 
-```bash
-cp -r plugin/ ~/.openclaw/extensions/openclaw-mem0/
-```
+## License and author
 
-Add to `~/.openclaw/openclaw.json` — see [plugin configuration](#configuration).
+MIT, see [LICENSE](LICENSE).
 
-## Architecture
-
-```
-OpenClaw Gateway
-  └── openclaw-mem0 plugin (TypeScript)
-        ├── before_agent_start → search mem0 → inject context
-        ├── agent_end → extract last turn → feed to mem0
-        └── tools: mem0_store, mem0_recall, mem0_forget, mem0_profile
-              │
-              ▼
-        Mnemonic API Server (Python/FastAPI, localhost:8765)
-              │
-              ├── Context Tree (hierarchical category summaries)
-              ├── LLM Extraction (OpenAI GPT — fact extraction + contradiction resolution)
-              ├── Smart Categorizer (6 categories + importance scoring)
-              └── Qdrant Vector DB (Docker, localhost:6333)
-```
-
-### Components
-
-| Component | Port | RAM | Purpose |
-|-----------|------|-----|---------|
-| **Qdrant** | 6333 | ~30MB | Vector storage + similarity search |
-| **Mnemonic API** | 8765 | ~100MB | REST API + context tree + LLM extraction |
-| **Plugin** | — | ~0MB | OpenClaw integration (runs in gateway) |
-
-### API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/health` | Health check with component status |
-| `POST` | `/add` | Add conversation (mem0 extracts facts) |
-| `POST` | `/search` | Semantic memory search |
-| `POST` | `/context` | **v4** Context tree assembly |
-| `POST` | `/compact` | **v4** Compaction hook |
-| `GET` | `/profile/{user_id}` | All memories for user |
-| `GET` | `/graph` | **v4** Similarity graph data |
-| `GET` | `/timeline` | **v4** Chronological timeline |
-| `GET` | `/categories` | **v4** Category summaries |
-| `POST` | `/consolidate` | Merge duplicate memories |
-| `GET` | `/stats` | Memory statistics |
-| `GET` | `/explorer` | Graph visualization UI |
-| `GET` | `/dashboard` | Analytics dashboard |
-
-## vs. Alternatives
-
-| Feature | Mnemonic v4 | ByteRover | Supermemory | mem0 Cloud |
-|---------|-------------|-----------|-------------|------------|
-| Self-hosted | ✅ | ❌ Cloud | ❌ Cloud | ❌ Cloud |
-| Context Tree | ✅ | ✅ | ❌ | ❌ |
-| Graph visualization | ✅ | ❌ | ❌ | ❌ |
-| Compaction hook | ✅ | ✅ | ❌ | ❌ |
-| Contradiction resolution | ✅ | ✅ | ✅ | ✅ |
-| Cost | ~$2/mo | $20+/mo | $20+/mo | $20+/mo |
-| Data privacy | ✅ Your server | ❌ Their cloud | ❌ Their cloud | ❌ Their cloud |
-
-## License
-
-MIT — use it however you want.
-
-## Credits
-
-- [mem0](https://github.com/mem0ai/mem0) — memory engine (Apache 2.0)
-- [Qdrant](https://github.com/qdrant/qdrant) — vector database (Apache 2.0)
-- [vis-network](https://github.com/visjs/vis-network) — graph visualization
-- [Chart.js](https://www.chartjs.org/) — analytics charts
-- [OpenClaw](https://github.com/openclaw/openclaw) — agent platform
-- Built by [NeuraScale](https://neurascale.org)
+Built by [Omar G. Nagy](https://omargnagy.com), AI Systems Engineer. I build memory and evaluation infrastructure for LLM and agent products. Case study: [omargnagy.com/work/mnemonic](https://omargnagy.com/work/mnemonic).

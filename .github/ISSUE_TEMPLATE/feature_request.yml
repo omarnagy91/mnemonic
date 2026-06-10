@@ -1,0 +1,23 @@
+name: Feature request
+description: A capability, a route, or a generalization step Mnemonic should support.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What can your agent not remember or recall well today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: What endpoint, config, or behavior should change? Keep it self-hostable and small.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Including "use mem0 / Zep directly for this" if that is honestly the better answer.
